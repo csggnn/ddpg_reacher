@@ -4,3 +4,5 @@
 unity-environment\.log
 
 __pycache__/
+
+checkpoints/last_run/

@@ -10,7 +10,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 128        # minibatch size
+BATCH_SIZE = 128     # minibatch size
+LEARN_EVERY = 1        # do not learn at every action
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
@@ -50,11 +51,18 @@ class Agent():
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
+        self.learn_i=0
     
     def step(self, state, action, reward, next_state, done):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
         self.memory.add(state, action, reward, next_state, done)
+
+        self.learn_i=self.learn_i+1
+        if (self.learn_i>=LEARN_EVERY):
+            self.learn_i=0
+        else:
+            return #skip learning
 
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
