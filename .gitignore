@@ -2,3 +2,5 @@
 \.idea/
 
 unity-environment\.log
+
+__pycache__/

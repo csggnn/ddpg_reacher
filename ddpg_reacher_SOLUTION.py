@@ -1,6 +1,9 @@
 from unityagents import UnityEnvironment
 import numpy as np
-
+from ddpg_agent import Agent
+from collections import deque
+import torch
+import matplotlib.pyplot as plt
 
 
 def show_reacher_info(env):
@@ -52,12 +55,59 @@ def random_reacher_run(env,seed=None):
 
 
 def train_ddpg_on_reacher(env, seed=None):
-    env.reset()
+
     env_info = env.reset(train_mode=True)[env.brain_names[0]]
+    env.reset()
     brain = env.brains[env.brain_names[0]]
     np.random.seed(seed)
+    states = env_info.vector_observations  # get the current state (for each agent)
+    num_agents = len(env_info.agents)
+    action_size = brain.vector_action_space_size
+    scores = np.zeros(num_agents)  # initialize the score (for each agent)
+    agent = Agent(random_seed=seed, action_size= action_size, state_size=len(states[0]))
 
-    print("not yet implemented")
+    train_episodes=1000
+    max_t=10000000 #the episode will end by itself
+    scores_deque = deque(maxlen=100)
+    scores = []
+    max_score = -np.Inf
+    plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    for i_episode in range(1, train_episodes + 1):
+        env.reset()
+        env_info = env.reset(train_mode=True)[env.brain_names[0]]
+        state= env_info.vector_observations[0]
+        agent.reset()
+        score=0
+        for t in range(max_t):
+            action = agent.act(state)
+            env_info = env.step(action)[env.brain_names[0]]
+            next_state = env_info.vector_observations[0]
+            reward = env_info.rewards[0]
+            done = env_info.local_done[0]
+            agent.step(states, action, reward, next_state, done)
+            state = next_state
+            score += reward
+            if done:
+                break
+
+        scores_deque.append(score)
+        scores.append(score)
+        print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}'.format(i_episode, np.mean(scores_deque), score),
+              end="")
+        if i_episode % 100 == 0:
+            torch.save(agent.actor_local.state_dict(), 'checkpoints/last_run/actor.pth')
+            torch.save(agent.critic_local.state_dict(), 'checkpoints/last_run/critic.pth')
+            print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)))
+        if i_episode % 20 == 0:
+            ax.clear()
+            ax.plot(np.arange(1, len(scores) + 1), scores)
+            plt.ylabel('Score')
+            plt.xlabel('Episode #')
+            plt.draw()
+            plt.pause(.001)
 
 def show_ddpg_on_reacher(env, seed=None):
     env.reset()
@@ -95,4 +145,4 @@ def ddpg_reacher_solution(mode="random"):
 
 
 if __name__ == "__main__":
-    ddpg_reacher_solution("random")
+    ddpg_reacher_solution("train")
