@@ -16,6 +16,7 @@ TAU = 1e-3  # for soft update of target parameters
 LR_ACTOR = 1e-4  # learning rate of the actor
 LR_CRITIC = 1e-3  # learning rate of the critic
 WEIGHT_DECAY = 0  # L2 weight decay
+LEARN_EVERY = 4 # learn only once every LEARN_EVERY actions
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -52,15 +53,28 @@ class Agent():
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
+        self.learn_i=0
+
     def step(self, state, action, reward, next_state, done):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
         self.memory.add(state, action, reward, next_state, done)
 
-        # Learn, if enough samples are available in memory
-        if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
+        self.learn_i=self.learn_i+1
+        if (self.learn_i>=LEARN_EVERY):
+            self.learn_i=0
+            # Learn, if enough samples are available in memory
+            if len(self.memory) > BATCH_SIZE:
+ #               print("learn")
+                experiences = self.memory.sample()
+                self.learn(experiences, GAMMA)
+ #           else:
+ #               print("can't learn yet")
+ #       else:
+ #           print("skip")
+
+
+
 
     def act(self, state, add_noise=True):
         """Returns actions for given state as per current policy."""
