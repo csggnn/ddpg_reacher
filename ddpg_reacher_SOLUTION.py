@@ -36,11 +36,11 @@ def random_run(env,seed=None):
     print('Total score (averaged over agents) this episode: {}'.format(score))
 
 
-def train_ddpg(env, seed=None):
+def train_ddpg(env, seed=None, agent_pars=None):
 
     env.reset()
     np.random.seed(seed)
-    agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size())
+    agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
     train_episodes=1000
     max_t=10000000 #the episode will end by itself
     scores_deque = deque(maxlen=100)
@@ -99,8 +99,21 @@ def ddpg_reacher_solution(mode="random"):
         random_run(env, seed=0)
 
     elif mode is "train":
+        ag_pars = {}
+        ag_pars["BUFFER_SIZE"] = int(1e4)  # replay buffer size
+        ag_pars["BATCH_SIZE"] = 64  # minibatch size
+        ag_pars["GAMMA"] = 0.99  # discount factor
+        ag_pars["TAU"] = 1e-3  # for soft update of target parameters
+        ag_pars["LR_ACTOR"] = 1e-4#1e-5#  # learning rate of the actor
+        ag_pars["LR_CRITIC"] = 1e-3#1e-4#  # learning rate of the critic
+        ag_pars["WEIGHT_DECAY"] = 0.001  # L2 weight decay
+        ag_pars["LEARN_EVERY"] = 1  # learn only once every LEARN_EVERY actions
+        ag_pars["ACTOR_FC1"] = 400#100#
+        ag_pars["ACTOR_FC2"] = 300#100#
+        ag_pars["CRITIC_FC1"] = 400#100#
+        ag_pars["CRITIC_FC2"] = 300#100#
         print("Training a ddpg Agent in the Reacher Environment")
-        train_ddpg(env, seed=0)
+        train_ddpg(env, seed=0, agent_pars=ag_pars)
     elif mode is "show":
         print("Showing the behavior of a trained ddpg Agent in the Reacher Environment")
         show_ddpg_on_reacher(env, seed=0)
