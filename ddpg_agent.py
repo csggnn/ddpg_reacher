@@ -22,6 +22,9 @@ def_pars["ACTOR_FC1"] = 400
 def_pars["ACTOR_FC2"] = 300
 def_pars["CRITIC_FC1"] = 400
 def_pars["CRITIC_FC2"] = 300
+def_pars["NOISE_DECAY"] = 0.999999
+def_pars["NOISE_START"] = 0.02
+def_pars["NOISE_MIN"] = 0.0002
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -69,6 +72,10 @@ class Agent():
         # Noise process
         self.noise = OUNoise(action_size, random_seed)
 
+        self.noise_factor = self.pars["NOISE_START"]
+        self.noise_decay = self.pars["NOISE_DECAY"]
+        self.noise_min_factor = self.pars["NOISE_MIN"]
+
         # Replay memory
         self.memory = ReplayBuffer(action_size, self.pars["BUFFER_SIZE"], self.pars["BATCH_SIZE"], random_seed)
 
@@ -96,7 +103,8 @@ class Agent():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         if add_noise:
-            action += self.noise.sample()
+            self.noise_factor = max(self.noise_min_factor, self.noise_factor*self.noise_decay)
+            action += self.noise.sample()*self.noise_factor
         return np.clip(action, -1, 1)
 
     def reset(self):

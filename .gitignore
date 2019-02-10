@@ -5,7 +5,8 @@ unity-environment\.log
 
 __pycache__/
 
-checkpoints/last_run/
+checkpoints/last_run/actor.pth
+checkpoints/last_run/critic.pth
 
 test_out/
 

@@ -42,7 +42,10 @@ def train_ddpg(env, seed=None, agent_pars=None):
     np.random.seed(seed)
     agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
     train_episodes=1000
-    max_t=10000000 #the episode will end by itself
+    max_t_low=300 #the episode will end by itself
+    max_t_high=1000
+    max_t=max_t_low
+    use_noise_p=0.3
     scores_deque = deque(maxlen=100)
     scores = []
     plt.ion()
@@ -52,14 +55,25 @@ def train_ddpg(env, seed=None, agent_pars=None):
         state=env.reset()
         agent.reset()
         score=0
+        natural_end=False
+        noise_episode = np.random.rand()<use_noise_p
         for t in range(max_t):
-            action = agent.act(state)
+            action = agent.act(state, add_noise=noise_episode)
             [next_state, reward, done, x ] = env.step(action)
+            if i_episode%50 ==0:
+                env.render()
             agent.step(state, action, reward, next_state, done)
             state = next_state
             score += reward
             if done:
+                natural_end = True
                 break
+
+        if   natural_end is False:
+            print("timeout end")
+            max_t=min(max_t_high, int(max_t*1.05))
+        else:
+            max_t=max(max_t_low, int(max_t*0.99))
 
         scores_deque.append(score)
         scores.append(score)
@@ -88,8 +102,10 @@ def ddpg_reacher_solution(mode="random"):
     # Reacher environment: move a double-jointed arm to target locations.
     # A reward of `+0.1` is provided for each step that the agent's hand is in the goal location.
     # The goal of the agent is to maintain its position at the target location for as many time steps as possible.
-    env = Reacher1Env(seed=0)
+    #env = Reacher1Env(seed=0)
     #env = ContinuousGymEnv('Pendulum-v0', seed=0)
+
+    env = ContinuousGymEnv('LunarLanderContinuous-v2', seed=0)
 
     show_info(env)
 
@@ -112,6 +128,9 @@ def ddpg_reacher_solution(mode="random"):
         ag_pars["ACTOR_FC2"] = 300#100#
         ag_pars["CRITIC_FC1"] = 400#100#
         ag_pars["CRITIC_FC2"] = 300#100#
+        ag_pars["NOISE_DECAY"] = 0.99999
+        ag_pars["NOISE_START"] = 0.02
+        ag_pars["NOISE_MIN"] = 0.0002
         print("Training a ddpg Agent in the Reacher Environment")
         train_ddpg(env, seed=0, agent_pars=ag_pars)
     elif mode is "show":
