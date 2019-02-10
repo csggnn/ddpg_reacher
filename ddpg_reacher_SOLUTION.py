@@ -103,9 +103,9 @@ def ddpg_reacher_solution(mode="random"):
     # A reward of `+0.1` is provided for each step that the agent's hand is in the goal location.
     # The goal of the agent is to maintain its position at the target location for as many time steps as possible.
     #env = Reacher1Env(seed=0)
-    #env = ContinuousGymEnv('Pendulum-v0', seed=0)
+    env = ContinuousGymEnv('Pendulum-v0', seed=0)
 
-    env = ContinuousGymEnv('LunarLanderContinuous-v2', seed=0)
+    #env = ContinuousGymEnv('LunarLanderContinuous-v2', seed=0)
 
     show_info(env)
 
