@@ -4,23 +4,26 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-files= os.listdir("test_out")
+files= os.listdir("test_out_2")
 p_files=[]
 best_scores=[]
-pass_epochs=[]
-pars = []
-layerss = []
-mem_sizes=[]
-update_everys=[]
-learn_everys=[]
-learning_rates =[]
-eps_decays =[]
-double_qnets=[]
-delayers=[]
+BUFFER_SIZE=[]
+BATCH_SIZE=[]
+GAMMA=[]
+TAU=[]
+LR_ACTOR=[]
+LR_CRITIC=[]
+WEIGHT_DECAY=[]
+LEARN_EVERY=[]
+ACTOR_FC1=[]
+ACTOR_FC2=[]
+CRITIC_FC1=[]
+CRITIC_FC2=[]
+
 for f in files:
     if f[-2:]==".p":
         p_files.append(f)
-        score_list, mean_score_list, pars = pickle.load(open("test_out/"+f, "rb"))
+        score_list, mean_score_list, pars = pickle.load(open("test_out_2/"+f, "rb"))
         solved_epoch=10000000
         solved=False
         best_score = 0
@@ -32,19 +35,24 @@ for f in files:
             best_score=max(best_score, mean_score_list[epoch])
 
         best_scores.append(best_score)
-        pass_epochs.append(solved_epoch)
-        layerss.append(pars['layers_sel'])
-        mem_sizes.append(pars['mem_size_sel'])
-        update_everys.append(pars['update_every_sel'])
-        learn_everys.append(pars['learn_every_sel'])
-        learning_rates.append(pars['learning_rate_sel'])
-        eps_decays.append(pars['eps_decay_sel'])
-        double_qnets.append(pars['double_qnet_sel'])
-        delayers.append(pars['delayer_sel'])
+        BUFFER_SIZE.append(pars['BUFFER_SIZE'])
+        BATCH_SIZE.append(pars['BATCH_SIZE'])
+        GAMMA.append(pars['GAMMA'])
+        TAU.append(pars['TAU'])
+        LR_ACTOR.append(pars['LR_ACTOR'])
+        LR_CRITIC.append(pars['LR_CRITIC'])
+        WEIGHT_DECAY.append(pars['WEIGHT_DECAY'])
+        LEARN_EVERY.append(pars['LEARN_EVERY'])
+        ACTOR_FC1.append(pars['ACTOR_FC1'])
+        ACTOR_FC2.append(pars['ACTOR_FC2'])
+        CRITIC_FC1.append(pars['CRITIC_FC1'])
+        CRITIC_FC2.append(pars['CRITIC_FC2'])
 
-res_dict={"file_name": p_files, "best_score": best_scores, "pass_epoch":pass_epochs, "layer":layerss,
-          "mem_size":mem_sizes, "update_every":update_everys, "learn_every":learn_everys,
-          "learning_rate":learning_rates, "eps_decay": eps_decays, "double_qnet": double_qnets, "delayer":delayers}
+
+res_dict={"file_name": p_files, "best_score": best_scores, "BUFFER_SIZE":BUFFER_SIZE, "BATCH_SIZE":BATCH_SIZE,
+          "GAMMA":GAMMA, "TAU":TAU, "LR_ACTOR":LR_ACTOR,
+          "LR_CRITIC":LR_CRITIC, "WEIGHT_DECAY": WEIGHT_DECAY, "LEARN_EVERY": LEARN_EVERY, "ACTOR_FC1":ACTOR_FC1,
+          "ACTOR_FC1":ACTOR_FC1,"CRITIC_FC1":CRITIC_FC1,"CRITIC_FC2":CRITIC_FC2}
 
 res_df=pd.DataFrame(res_dict)
 
@@ -52,13 +60,12 @@ res_df=res_df.sort_values("best_score", ascending=False)
 res_df.to_csv("optim_results.csv")
 
 
-f= res_df.file_name[63]
-score_list, mean_score_list, pars = pickle.load(open("test_out/" + f, "rb"))
+f= res_df.file_name[4]
+score_list, mean_score_list, pars = pickle.load(open("test_out_2/" + f, "rb"))
 plt.figure()
 plt.plot(score_list)
 x = range(len(mean_score_list))
-plt.plot(np.array(x)*100.0, mean_score_list)
-plt.plot([0, 800], [13, 13])
+plt.plot(25+np.array(x)*50.0, mean_score_list)
 plt.ylabel('Score')
 plt.xlabel('Episode #')
 
