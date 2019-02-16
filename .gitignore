@@ -11,3 +11,5 @@ checkpoints/last_run/critic.pth
 test_out/
 
 test_out_2/
+
+checkpoints/last_run/
