@@ -1,69 +1,138 @@
 from unityagents import UnityEnvironment
 import numpy as np
+from ddpg_agent import Agent
+from collections import deque
+import torch
+import pickle
+import matplotlib.pyplot as plt
+import time
+from continuous_gym_env import ContinuousGymEnv
+from reacher1_env import Reacher1Env
 
-
-
-def show_reacher_info(env):
-    # reset the environment
-    env_info = env.reset(train_mode=True)[env.brain_names[0]]
-    brain = env.brains[env.brain_names[0]]
-    # number of agents
-    num_agents = len(env_info.agents)
-    print('Number of agents:', num_agents)
-
+def show_info(env):
     # size of each action
-    action_size = brain.vector_action_space_size
-    print('Size of each action:', action_size)
-
-    # examine the state space
-    states = env_info.vector_observations
-    state_size = states.shape[1]
-    print('There are {} agents. Each observes a state with length: {}'.format(states.shape[0], state_size))
-    print('The state for the first agent looks like:', states[0])
+    print('Size of each action:', env.get_action_space_size())
+    print('There are {} agents. Each observes a state with length: {}'.format(1, env.get_state_space_size()))
+    print('The state for the first agent looks like:', env.reset())
 
 
-def random_reacher_run(env,seed=None):
+def random_run(env,seed=None):
     # Taking Random Actions in the Environment
 
     # env.reset(train_mode=False)[env.brain_names[0]] will enable me to read env_info.vector_observations
     # but seems not to completely reset the environment. Without a new env.reset() call the environment would
     # be stuck on a second run.
 
-    env.reset()
-    env_info = env.reset(train_mode=False)[env.brain_names[0]] # reset the environment
-    brain = env.brains[env.brain_names[0]]
+    state=env.reset()
     np.random.seed(seed)
-    states = env_info.vector_observations                  # get the current state (for each agent)
-    num_agents = len(env_info.agents)
-    action_size = brain.vector_action_space_size
-    scores = np.zeros(num_agents)                          # initialize the score (for each agent)
+    action_size = env.get_action_space_size()
+    score = 0                                               # initialize the score (for each agent)
     while True:
-        actions = np.random.randn(num_agents, action_size) # select an action (for each agent)
-        actions = np.clip(actions, -1, 1)                  # all actions between -1 and 1
-        env_info = env.step(actions)[env.brain_names[0]]   # send all actions to tne environment
-        next_states = env_info.vector_observations         # get next state (for each agent)
-        rewards = env_info.rewards                         # get reward (for each agent)
-        dones = env_info.local_done                        # see if episode finished
-        scores += env_info.rewards                         # update the score (for each agent)
-        states = next_states                               # roll over states to next time step
-        if np.any(dones):                                  # exit loop if episode finished
+        action = np.random.randn(action_size)               # select an action (for each agent)
+        action = np.clip(action, -1, 1)
+        [next_state, reward, done, x ] = env.step(action)   # all actions between -1 and 1
+        score += reward                                     # update the score (for each agent)
+        state = next_state                                  # roll over states to next time step
+        time.sleep(0.02)
+        if np.any(done):                                    # exit loop if episode finished
             break
-    print('Total score (averaged over agents) this episode: {}'.format(np.mean(scores)))
+    print('Total score (averaged over agents) this episode: {}'.format(score))
 
 
-def train_ddpg_on_reacher(env, seed=None):
+def train_ddpg(env, seed=None, agent_pars=None):
+
     env.reset()
-    env_info = env.reset(train_mode=True)[env.brain_names[0]]
-    brain = env.brains[env.brain_names[0]]
     np.random.seed(seed)
+    agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
+    pickle.dump(agent_pars, open("checkpoints/last_run/agent_pars.p", "wb"))
+    train_episodes=1000
+    max_t_low=300 #the episode will end by itself
+    max_t_high=1000
 
-    print("not yet implemented")
+    max_t_low=2000
+    max_t_high=2000
 
-def show_ddpg_on_reacher(env, seed=None):
-    env.reset()
-    env_info = env.reset(train_mode=True)[env.brain_names[0]]
-    brain = env.brains[env.brain_names[0]]
-    print("not yet implemented")
+    max_t=max_t_low
+
+
+    use_noise_p=0.3
+    scores_deque = deque(maxlen=100)
+    scores = []
+    plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    for i_episode in range(1, train_episodes + 1):
+        state=env.reset()
+        agent.reset()
+        score=0
+        natural_end=False
+        noise_episode = np.random.rand()<use_noise_p
+        for t in range(max_t):
+            action = agent.act(state, add_noise=noise_episode)
+            [next_state, reward, done, x ] = env.step(action)
+            if i_episode%50 ==0:
+                env.render()
+            agent.step(state, action, reward, next_state, done)
+            state = next_state
+            score += reward
+            if done:
+                natural_end = True
+                break
+
+        if   natural_end is False:
+            print("timeout end")
+            max_t=min(max_t_high, int(max_t*1.05))
+        else:
+            max_t=max(max_t_low, int(max_t*0.99))
+
+        scores_deque.append(score)
+        scores.append(score)
+        print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}'.format(i_episode, np.mean(scores_deque), score),
+              end="")
+        if i_episode % 100 == 0:
+            torch.save(agent.actor_local.state_dict(), 'checkpoints/last_run/actor'+str(i_episode)+'.pth')
+            torch.save(agent.critic_local.state_dict(), 'checkpoints/last_run/critic'+str(i_episode)+'.pth')
+            torch.save(agent.actor_target.state_dict(), 'checkpoints/last_run/actor_tg'+str(i_episode)+'.pth')
+            torch.save(agent.critic_target.state_dict(), 'checkpoints/last_run/critic_tg'+str(i_episode)+'.pth')
+            pickle.dump(scores, open("checkpoints/last_run/score.p", "wb"))
+
+            print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)))
+        if i_episode % 20 == 0:
+            ax.clear()
+            ax.plot(np.arange(1, len(scores) + 1), scores)
+            plt.ylabel('Score')
+            plt.xlabel('Episode #')
+            plt.draw()
+            plt.pause(.001)
+
+def show_ddpg_on_reacher(env, seed=None, agent_pars=None):
+    state=env.reset()
+    episode_i=[100,300,500,1000,1500,2000,3000]
+    selected_i = episode_i[1]
+    agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
+    agent.actor_local.load_state_dict(torch.load('checkpoints/last_run/actor'+str(selected_i)+'.pth'))
+    agent.critic_local.load_state_dict(torch.load('checkpoints/last_run/critic' + str(selected_i) + '.pth'))
+    agent.actor_target.load_state_dict(torch.load('checkpoints/last_run/actor_tg' + str(selected_i) + '.pth'))
+    agent.critic_target.load_state_dict(torch.load('checkpoints/last_run/critic_tg' + str(selected_i) + '.pth'))
+
+    # score = pickle.load(open('checkpoints/last_run/score.p', 'rb'))
+    # plt.figure()
+    # plt.plot(score)
+    # plt.ylabel('Score')
+    # plt.xlabel('Episode #')
+    # plt.pause(0.02)
+
+    for i in range(10):
+        score =0;
+        while True:
+            action = agent.act(state, False)            # select an action (for each agent)
+            [next_state, reward, done, x ] = env.step(action)   # all actions between -1 and 1
+            score += reward                                     # update the score (for each agent)
+            state = next_state                                  # roll over states to next time step
+            time.sleep(0.02)
+            if np.any(done):                                    # exit loop if episode finished
+                break
+        print('Total score (averaged over agents) this episode: {}'.format(score))
 
 
 def ddpg_reacher_solution(mode="random"):
@@ -71,19 +140,54 @@ def ddpg_reacher_solution(mode="random"):
     # Reacher environment: move a double-jointed arm to target locations.
     # A reward of `+0.1` is provided for each step that the agent's hand is in the goal location.
     # The goal of the agent is to maintain its position at the target location for as many time steps as possible.
-    env = UnityEnvironment(file_name='../Reacher_Linux/Reacher.x86_64', seed=0)
+    env = Reacher1Env(seed=0)
+    #env = ContinuousGymEnv('BipedalWalker-v2', seed=0)
 
-    show_reacher_info(env)
+    #env = ContinuousGymEnv('LunarLanderContinuous-v2', seed=0)
+
+    show_info(env)
 
     if mode is "random":
         print("Taking random actions in the Reacher Environment")
-        random_reacher_run(env, seed=0)
-        random_reacher_run(env, seed=0)
+        random_run(env, seed=0)
+        random_run(env, seed=0)
 
     elif mode is "train":
+        ag_pars = {}
+        ag_pars["BUFFER_SIZE"] = int(1e5)  # replay buffer size
+        ag_pars["BATCH_SIZE"] = 64  # minibatch size
+        ag_pars["GAMMA"] = 0.99  # discount factor
+        ag_pars["TAU"] = 1e-2  # for soft update of target parameters
+        ag_pars["LR_ACTOR"] = 1e-5#1e-5#  # learning rate of the actor
+        ag_pars["LR_CRITIC"] = 1e-4#1e-4#  # learning rate of the critic
+        ag_pars["WEIGHT_DECAY"] = 0  # L2 weight decay
+        ag_pars["LEARN_EVERY"] = 1  # learn only once every LEARN_EVERY actions
+        ag_pars["ACTOR_FC1"] = 400#100#
+        ag_pars["ACTOR_FC2"] = 300#100#
+        ag_pars["CRITIC_FC1"] = 400#100#
+        ag_pars["CRITIC_FC2"] = 300#100#
+        ag_pars["NOISE_DECAY"] = 0.99999
+        ag_pars["NOISE_START"] = 0.02
+        ag_pars["NOISE_MIN"] = 0.0002
         print("Training a ddpg Agent in the Reacher Environment")
-        train_ddpg_on_reacher(env, seed=0)
+        train_ddpg(env, seed=0, agent_pars=ag_pars)
     elif mode is "show":
+        ag_pars = {}
+        ag_pars["BUFFER_SIZE"] = int(1e5)  # replay buffer size
+        ag_pars["BATCH_SIZE"] = 64  # minibatch size
+        ag_pars["GAMMA"] = 0.99  # discount factor
+        ag_pars["TAU"] = 1e-2  # for soft update of target parameters
+        ag_pars["LR_ACTOR"] = 1e-5#1e-5#  # learning rate of the actor
+        ag_pars["LR_CRITIC"] = 1e-4#1e-4#  # learning rate of the critic
+        ag_pars["WEIGHT_DECAY"] = 0  # L2 weight decay
+        ag_pars["LEARN_EVERY"] = 1  # learn only once every LEARN_EVERY actions
+        ag_pars["ACTOR_FC1"] = 400#100#
+        ag_pars["ACTOR_FC2"] = 300#100#
+        ag_pars["CRITIC_FC1"] = 400#100#
+        ag_pars["CRITIC_FC2"] = 300#100#
+        ag_pars["NOISE_DECAY"] = 0.99999
+        ag_pars["NOISE_START"] = 0.02
+        ag_pars["NOISE_MIN"] = 0.0002
         print("Showing the behavior of a trained ddpg Agent in the Reacher Environment")
         show_ddpg_on_reacher(env, seed=0)
 
@@ -95,4 +199,4 @@ def ddpg_reacher_solution(mode="random"):
 
 
 if __name__ == "__main__":
-    ddpg_reacher_solution("random")
+    ddpg_reacher_solution("show")
