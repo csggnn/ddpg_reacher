@@ -26,7 +26,7 @@ The strong link between DQN and DDPG lays in the way the actor and critic networ
 experiences are collected and used in training.
 
 Similarly to DQN, both the actor and the ctritic networks are doubled: each defines a local network which is actually trained, 
-and a separated target network which  is used for comuting expected output. (...)
+and a separated target network which is used for computing expected output.
   
 As in DQN, experiences are collected in an experience buffer at every action and randomly sampled from the buffer for training.
 This prevents from correlation of observed states, which is known to lead to instability.
@@ -42,6 +42,9 @@ actions.
 
  - **ddpg_reacher_SOLUTION.py** is the main file of the project. It can train a DDPG agent on a set of environments, 
     display random runs of the environemnts and load a trained DDPG agent.
+    currently, *ddpg_reacher_solution("show")* is called at line 202 to show the behavior of a trained agent. select 
+    *ddpg_reacher_solution("train")* to train a new agent.
+
  - **train_DQN_agent.py** is the main file used during development the QAgent class implemented in 
     q_agent.py and the file used for training the selected DQN agent.
     This file can be used to retrain the successful agent or to train new agents for the Banana Collection environment 
@@ -49,7 +52,7 @@ actions.
  - **continuous_action_env.py**, **continuous_gym_env.py** and **reacher1_env.py**: wrappers to the gym and reacher 
     environments, they have been developed so that the DDPG agent can be run both gym and Reacher environments with the 
     same code. LunarLanderContinuous an Pendulum environments have been used to verify the ability of the code to solve 
-    simple environments befroe passing to the more comples reacher task.
+    simple environments before passing to the more complex reacher task.
  - **ddpg_agent.py**: Agent with minor modifications with respect to the baseline implementation
  - **model.py**: Neural network models used by ddpg_agent.py
  - **param_optim.py** is a random parameter optimization script used to tests several parameter configurations.
@@ -65,12 +68,17 @@ In the implementation used in this project:
 
 ### Results
 
-My presented solution does not solve the environment. I am presenting it now considering the deadline and 
+As can be seen from the following graph, my presented solution does not solve the environment. I am presenting it now considering the deadline and 
 hoping some mistakes can be highlighted which will guide my future developments.
+
+![score_graph](score_300.png)
+
 
 I first attempted to follow the instructions in Benchmark solution (attempt 2), which substatially suggests to just
 plug the Reacher environment to the vanilla DDQN provided, but my results are very different from the graph presented in the notebook.
  
+I then added some modification and a parameter optimization, which never beyond average score of 4.
+
 Before adding extra logic, new algorithms and other changes I would like to make sure what has been done up to now is 
-correct.
+correct and learning is not prevented by some mistake i am not able to detect at the moment.
 
