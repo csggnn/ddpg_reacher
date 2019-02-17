@@ -97,7 +97,16 @@ values beyond 25 in 1000 episodes, although not solving the environment.
 Weights leading to these results have been saved and used as a starting point for 500 additional episodes of training, 
 but ddpg revealed its instability. 
 
+##### Agressive discount factor
 
+Discount factor measures the relevance of future rewards to current action, and it makes sense for it to depend on the 
+compact that current action has on reward. In this specific environment, a short sequence of actions (2-3) can in all
+states be taken to get to a positive reward from any starting state. This means the current state an the sequence of 
+actions taken up to a given moment have very little influence on rewards which are distant in the future.
+
+The discount fator used in previous tests was 0.99. A new discount factor of 0.92 has been tested without changing other
+parameters, and the score pattern observed on the first 300 training episodes showed a significant improvement.
+![score_graph](score_discount_092.png)
 
 
 ### Results

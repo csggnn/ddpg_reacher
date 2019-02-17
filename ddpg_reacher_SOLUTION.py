@@ -170,7 +170,7 @@ def ddpg_reacher_solution(mode="random", starting_episode=0):
         ag_pars = {}
         ag_pars["BUFFER_SIZE"] = int(1e5)  # replay buffer size
         ag_pars["BATCH_SIZE"] = 64  # minibatch size
-        ag_pars["GAMMA"] = 0.99  # discount factor
+        ag_pars["GAMMA"] = 0.92  # discount factor
         ag_pars["TAU"] = 1e-2  # for soft update of target parameters
         ag_pars["LR_ACTOR"] = 1e-5#1e-5#  # learning rate of the actor
         ag_pars["LR_CRITIC"] = 1e-4#1e-4#  # learning rate of the critic
@@ -213,4 +213,4 @@ def ddpg_reacher_solution(mode="random", starting_episode=0):
 
 
 if __name__ == "__main__":
-    ddpg_reacher_solution("train", 1000)
+    ddpg_reacher_solution("train", 0)
