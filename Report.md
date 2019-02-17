@@ -19,17 +19,23 @@ state in a continuous state space to set of Q values, one for each possible acti
 DQN and select the action corresponding to the highest Q value for that state.
 
 If the action space is continuous, this approach no longer works, as a DQN can only produce a finite set of action value
- while the possible actions are infinite. In DDPG, an actor network is used to directly estimate an action from a state input.
-The output of this network is fed to a critic network (along with the state), which only estimates the Q function for that specific action.
+ while the possible actions are infinite. 
+ 
+DQN is a value method, it uses a neural network to model an action value function, producing an action value for each 
+possible action in a state.
+DDPG modifies DQN by using 2 networks: an actor network estimates the best action for an input state, while a critic 
+network estimates the action value associated an input state, and the action selected by the actor.
 
-The strong link between DQN and DDPG lays in the way the actor and critic network are implemented and in the way in which 
-experiences are collected and used in training.
+The actor network uses the critic network to optimize its weights: weights are updated by gradient ascent, maximizing the
+action value associated to the actions which the network would select for each state. This action value is obtained
+from the critic network.
 
-Similarly to DQN, both the actor and the ctritic networks are doubled: each defines a local network which is actually trained, 
-and a separated target network which is used for computing expected output.
-  
-As in DQN, experiences are collected in an experience buffer at every action and randomly sampled from the buffer for training.
-This prevents from correlation of observed states, which is known to lead to instability.
+The critic network uses the action network as input, the action selected by the action network is fed as an input to the 
+fully connected layers of the critic network which estimate the Q value associated to that specific action.
+ 
+Experience replay is still used to decorrelate inputs, and, similarly to DQN, both the actor and the ctritic networks 
+are doubled: each defines a local network which is actually trained, and a separated target network which is used for 
+computing expected output.
 
 ### Implementation
 
@@ -55,9 +61,11 @@ actions.
     simple environments before passing to the more complex reacher task.
  - **ddpg_agent.py**: Agent with minor modifications with respect to the baseline implementation
  - **model.py**: Neural network models used by ddpg_agent.py
- - **param_optim.py** is a random parameter optimization script used to tests several parameter configurations.
+ - **param_optim.py** is a random parameter optimization script used to test several parameter configurations.
 
-#### Modification: Random actions
+#### Modifications
+
+##### Random actions
 
 In its original implementation, a random noise of magnitude comparable to the magnitude of the agent's acions was added 
 to guarantee proper exploration. This noise component has been found too large and impacting on performance. 
@@ -65,6 +73,32 @@ In the implementation used in this project:
  - noise is added to episodes only with probability p: while some episodes are run with noise, others follow the learned 
  deterministic policy. If noise is always added to actions, states requiring precise actions may never be reached.
  - noise has lower magnitude and is reduced over time: similar to decaying epsilon for epsilon greedy policies.
+
+This modification has been effective in the solution of the 2 gym environments, but did not lead to a solution of the 
+Reacher environment. 
+
+Restults obtained with ddpg and modified noise after parameter optimization are shown in the following graph.
+
+![score_graph](score_300.png)
+
+##### Fill before learn
+
+Experience buffer is used to decorrelate sampled experiences and thus reduce instability. If sampes
+are drawn form experience buffer as soon as a whole batch is available, anyhow, these samples will be indeed correlated 
+and stability may be compromised. A simple modification consists in triggering learn only when the experiance buffer has 
+collected sufficient samples. 
+
+In my implementation, the experience buffer has 100000 samples capacuty, and batches will be drawn only when at least 20000
+samples are stored. With this simple modification, ddpg algorithm was able to reach reaching average score
+values beyond 25 in 1000 episodes, although not solving the environment.
+
+![score_graph](score_waitmem_1000.png)
+
+Weights leading to these results have been saved and used as a starting point for 500 additional episodes of training, 
+but ddpg revealed its instability. 
+
+
+
 
 ### Results
 
