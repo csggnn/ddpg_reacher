@@ -152,7 +152,7 @@ The DDPG algoritm which solved the environment in 500 episodes uses the followin
  - Noise has been reduced by factor of 0.02 w.r.t original implementation. It is further reduced by factor 0.99999 at every action, 
    resulting in a total attenuation of 0.00027 after 500 episodes.
 
-folder checkpoints/19_02_17_discount_092
+folder checkpoints/final/stores checkpoints for the final agent, along with agent parameters and score
 
 ### Future work
 
