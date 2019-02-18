@@ -90,7 +90,7 @@ class Agent():
         if (self.learn_i>=self.pars["LEARN_EVERY"]):
             self.learn_i=0
             # Learn, if enough samples are available in memory
-            if len(self.memory) > self.pars["BATCH_SIZE"]:
+            if len(self.memory) > self.pars["BUFFER_SIZE"]/5:
                 experiences = self.memory.sample()
                 self.learn(experiences, self.pars["GAMMA"])
 
@@ -98,10 +98,11 @@ class Agent():
     def act(self, state, add_noise=True):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(device)
-        self.actor_local.eval()
+        # this should just act, not train!! Actually eval and train only set the actor in eval or train mode.
+        #self.actor_local.eval()
         with torch.no_grad():
-            action = self.actor_local(state).cpu().data.numpy()
-        self.actor_local.train()
+            action = self.actor_local.forward(state).cpu().data.numpy()
+        #self.actor_local.train()
         if add_noise:
             self.noise_factor = max(self.noise_min_factor, self.noise_factor*self.noise_decay)
             action += self.noise.sample()*self.noise_factor

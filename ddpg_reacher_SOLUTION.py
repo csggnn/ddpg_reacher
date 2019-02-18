@@ -39,18 +39,24 @@ def random_run(env,seed=None):
     print('Total score (averaged over agents) this episode: {}'.format(score))
 
 
-def train_ddpg(env, seed=None, agent_pars=None):
+def train_ddpg(env, seed=None, agent_pars=None, starting_episode=0):
 
     env.reset()
     np.random.seed(seed)
     agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
     pickle.dump(agent_pars, open("checkpoints/last_run/agent_pars.p", "wb"))
+
+
+
+
     train_episodes=1000
-    max_t_low=300 #the episode will end by itself
-    max_t_high=1000
+    #max_t_low=300 #the episode will end by itself
+    #max_t_high=1000
 
     max_t_low=2000
     max_t_high=2000
+
+    expected_t = 1000
 
     max_t=max_t_low
 
@@ -58,6 +64,15 @@ def train_ddpg(env, seed=None, agent_pars=None):
     use_noise_p=0.3
     scores_deque = deque(maxlen=100)
     scores = []
+
+    if starting_episode>0:
+        agent.actor_local.load_state_dict(torch.load("checkpoints/last_run/actor"+str(starting_episode)+".pth"))
+        agent.actor_target.load_state_dict(torch.load("checkpoints/last_run/actor_tg"+str(starting_episode)+".pth"))
+        agent.critic_local.load_state_dict(torch.load("checkpoints/last_run/critic"+str(starting_episode)+".pth"))
+        agent.critic_target.load_state_dict(torch.load("checkpoints/last_run/critic_tg"+str(starting_episode)+".pth"))
+        scores=pickle.load(open("checkpoints/last_run/score.p", "rb"))
+        agent.noise_factor = max(agent.noise_min_factor, agent.noise_factor*pow(agent.noise_decay, expected_t*starting_episode))
+
     plt.ion()
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -105,22 +120,23 @@ def train_ddpg(env, seed=None, agent_pars=None):
             plt.draw()
             plt.pause(.001)
 
-def show_ddpg_on_reacher(env, seed=None, agent_pars=None):
+def show_ddpg_on_reacher(env, seed=None, starting_episode=1000, agent_pars=None):
     state=env.reset()
-    episode_i=[100,300,500,1000,1500,2000,3000]
-    selected_i = episode_i[1]
+    selected_i = starting_episode
     agent = Agent(random_seed=seed, action_size= env.get_action_space_size(), state_size=env.get_state_space_size(), parameter_dict=agent_pars)
-    agent.actor_local.load_state_dict(torch.load('checkpoints/last_run/actor'+str(selected_i)+'.pth'))
-    agent.critic_local.load_state_dict(torch.load('checkpoints/last_run/critic' + str(selected_i) + '.pth'))
-    agent.actor_target.load_state_dict(torch.load('checkpoints/last_run/actor_tg' + str(selected_i) + '.pth'))
-    agent.critic_target.load_state_dict(torch.load('checkpoints/last_run/critic_tg' + str(selected_i) + '.pth'))
+    agent.actor_local.load_state_dict(torch.load('checkpoints/final/actor'+str(selected_i)+'.pth'))
+    agent.critic_local.load_state_dict(torch.load('checkpoints/final/critic' + str(selected_i) + '.pth'))
+    agent.actor_target.load_state_dict(torch.load('checkpoints/final/actor_tg' + str(selected_i) + '.pth'))
+    agent.critic_target.load_state_dict(torch.load('checkpoints/final/critic_tg' + str(selected_i) + '.pth'))
 
-    # score = pickle.load(open('checkpoints/last_run/score.p', 'rb'))
-    # plt.figure()
-    # plt.plot(score)
-    # plt.ylabel('Score')
-    # plt.xlabel('Episode #')
-    # plt.pause(0.02)
+    score = pickle.load(open('checkpoints/final/score.p', 'rb'))
+    plt.ion()
+    plt.figure()
+    plt.plot(score)
+    plt.ylabel('Score')
+    plt.xlabel('Episode #')
+    plt.pause(0.01)
+    plt.waitforbuttonpress()
 
     for i in range(10):
         score =0;
@@ -129,13 +145,13 @@ def show_ddpg_on_reacher(env, seed=None, agent_pars=None):
             [next_state, reward, done, x ] = env.step(action)   # all actions between -1 and 1
             score += reward                                     # update the score (for each agent)
             state = next_state                                  # roll over states to next time step
-            time.sleep(0.02)
+            time.sleep(0.001)
             if np.any(done):                                    # exit loop if episode finished
                 break
         print('Total score (averaged over agents) this episode: {}'.format(score))
 
 
-def ddpg_reacher_solution(mode="random"):
+def ddpg_reacher_solution(mode="random", starting_episode=0):
 
     # Reacher environment: move a double-jointed arm to target locations.
     # A reward of `+0.1` is provided for each step that the agent's hand is in the goal location.
@@ -156,7 +172,7 @@ def ddpg_reacher_solution(mode="random"):
         ag_pars = {}
         ag_pars["BUFFER_SIZE"] = int(1e5)  # replay buffer size
         ag_pars["BATCH_SIZE"] = 64  # minibatch size
-        ag_pars["GAMMA"] = 0.99  # discount factor
+        ag_pars["GAMMA"] = 0.92  # discount factor
         ag_pars["TAU"] = 1e-2  # for soft update of target parameters
         ag_pars["LR_ACTOR"] = 1e-5#1e-5#  # learning rate of the actor
         ag_pars["LR_CRITIC"] = 1e-4#1e-4#  # learning rate of the critic
@@ -170,7 +186,7 @@ def ddpg_reacher_solution(mode="random"):
         ag_pars["NOISE_START"] = 0.02
         ag_pars["NOISE_MIN"] = 0.0002
         print("Training a ddpg Agent in the Reacher Environment")
-        train_ddpg(env, seed=0, agent_pars=ag_pars)
+        train_ddpg(env, seed=0, agent_pars=ag_pars, starting_episode=starting_episode)
     elif mode is "show":
         ag_pars = {}
         ag_pars["BUFFER_SIZE"] = int(1e5)  # replay buffer size
@@ -189,7 +205,7 @@ def ddpg_reacher_solution(mode="random"):
         ag_pars["NOISE_START"] = 0.02
         ag_pars["NOISE_MIN"] = 0.0002
         print("Showing the behavior of a trained ddpg Agent in the Reacher Environment")
-        show_ddpg_on_reacher(env, seed=0)
+        show_ddpg_on_reacher(env, seed=0, starting_episode=starting_episode)
 
     else:
         print("INVALID MODE: please select a valid mode of operation among 'random', 'train' and 'show'")
@@ -199,4 +215,7 @@ def ddpg_reacher_solution(mode="random"):
 
 
 if __name__ == "__main__":
-    ddpg_reacher_solution("show")
+    # show agent in action after 100, 300, 500, 600 or 1000 iterations (environment solved at 500)
+    ddpg_reacher_solution("show", 500)
+    # retrain agent
+    #ddpg_reacher_solution("train", 0)
